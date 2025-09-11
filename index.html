@@ -25,8 +25,12 @@
         const { useState, useEffect, useRef } = React;
         const { Play, Pause, Square, Clock, TrendingUp, Target, User, LogOut } = window.LucideIcons;
 
-        // Firebase設定（あなた専用の設定に置き換える必要があります）
-     const firebaseConfig = {
+        import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
   apiKey: "AIzaSyDT6UPrNLx-Gc6X5jmXfvEx9nljyoU6gcY",
   authDomain: "study-timer-4cf6c.firebaseapp.com",
   projectId: "study-timer-4cf6c",
@@ -34,6 +38,10 @@
   messagingSenderId: "602384256321",
   appId: "1:602384256321:web:b44a4632cc830b5f2ee5c0"
 };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+     
         // Firebase初期化
         if (!firebase.apps.length) {
           firebase.initializeApp(firebaseConfig);
