@@ -211,14 +211,20 @@
           // 休憩（一時停止）
           const pauseTimer = () => {
             if (isPaused) {
+              // 休憩終了 - 新しい開始時間を設定
+              const resumeTime = Date.now();
+              const previousDuration = currentSessionTime;
               setIsPaused(false);
+              setSessionStartTime(resumeTime - (previousDuration * 1000));
+              
               intervalRef.current = setInterval(() => {
-                setCurrentSessionTime(prev => prev + 1);
+                const elapsed = Math.floor((Date.now() - (resumeTime - (previousDuration * 1000))) / 1000);
+                setCurrentSessionTime(elapsed);
               }, 1000);
             } else {
+              // 休憩開始
               setIsPaused(true);
               clearInterval(intervalRef.current);
-              setPausedTime(prev => prev + 1);
             }
           };
 
