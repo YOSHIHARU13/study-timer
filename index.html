@@ -142,26 +142,60 @@
             try {
               setSyncing(true);
               const userDoc = await db.collection('users').doc(userId).get();
+              
               if (userDoc.exists) {
                 const data = userDoc.data();
-                const records = data.dailyRecords || {};
                 
-                // 初回のみ35時間を今日に追加（移行処理）
-                if (!data.migrated35h) {
-                  const today = formatDate(new Date());
-                  records[today] = (records[today] || 0) + (35 * 3600); // 35時間 = 126,000秒
+                // 旧データ（studyHistory）が存在し、新データがない場合は移行
+                if (data.studyHistory && data.studyHistory.length > 0 && !data.dailyRecords) {
+                  console.log('旧データから移行します...');
+                  const newDailyRecords = {};
                   
-                  // 移行完了フラグを立てて保存
+                  data.studyHistory.forEach(session => {
+                    const date = session.date; // "YYYY/MM/DD"形式
+                    const dateKey = date.replace(/\//g, '-'); // "YYYY-MM-DD"に変換
+                    
+                    if (!newDailyRecords[dateKey]) {
+                      newDailyRecords[dateKey] = 0;
+                    }
+                    newDailyRecords[dateKey] += session.duration;
+                  });
+                  
+                  // 移行したデータを保存
+                  await db.collection('users').doc(userId).set({
+                    dailyRecords: newDailyRecords,
+                    studyHistory: data.studyHistory, // バックアップとして残す
+                    migrated: true,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                  });
+                  
+                  setDailyRecords(newDailyRecords);
+                  alert('旧データから移行しました！');
+                  return;
+                }
+                
+                // 既にmigrated35hフラグがある場合は何もしない
+                if (data.migrated35h) {
+                  setDailyRecords(data.dailyRecords || {});
+                } else {
+                  // 初回のみ35時間を今日に追加
+                  const records = data.dailyRecords || {};
+                  const today = formatDate(new Date());
+                  records[today] = (records[today] || 0) + (35 * 3600);
+                  
+                  // 保存してフラグを立てる
                   await db.collection('users').doc(userId).set({
                     dailyRecords: records,
                     migrated35h: true,
                     lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                  });
+                  }, { merge: true });
                   
+                  setDailyRecords(records);
                   console.log('35時間を追加しました');
                 }
-                
-                setDailyRecords(records);
+              } else {
+                // 新規ユーザー - 何もしない
+                setDailyRecords({});
               }
             } catch (error) {
               console.error('データ読み込みエラー:', error);
