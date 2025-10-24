@@ -426,33 +426,13 @@
                       <h1 className="text-3xl font-bold text-gray-800">学習タイマー</h1>
                       <p className="text-gray-600">継続は力なり 🔥</p>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <button
-                        onClick={() => {
-                          if (window.confirm('⚠️ 警告: 今日のデータを35時間にリセットします。よろしいですか？')) {
-                            const today = formatDate(new Date());
-                            const newRecords = { ...dailyRecords };
-                            newRecords[today] = 35 * 3600;
-                            setDailyRecords(newRecords);
-                            saveToFirestore(newRecords);
-                            alert('今日のデータを35時間にリセットしました');
-                          }
-                        }}
-                        className="text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-2 rounded-lg transition-colors"
-                      >
-                        🔧 35hにリセット
-                      </button>
-                      <button
-                        onClick={signOut}
-                        className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-                      >
-                        <LogOut className="w-5 h-5" />
-                        <span>ログアウト</span>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-                    💡 <strong>70hになってしまった場合:</strong> 「🔧 35hにリセット」ボタンで今日のデータを35時間に戻せます
+                    <button
+                      onClick={signOut}
+                      className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      <span>ログアウト</span>
+                    </button>
                   </div>
                 </div>
 
