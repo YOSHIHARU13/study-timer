@@ -51,21 +51,57 @@
           const [dailyRecords, setDailyRecords] = useState({});
           const [loading, setLoading] = useState(true);
           const [syncing, setSyncing] = useState(false);
+          const [showLevelList, setShowLevelList] = useState(false);
           
           const intervalRef = useRef(null);
 
           const engineerLevels = [
-            { name: '未経験者', hours: 0, color: '#e2e8f0' },
-            { name: '学習者', hours: 5, color: '#cbd5e1' },
-            { name: '初学者', hours: 15, color: '#94a3b8' },
-            { name: '練習生', hours: 30, color: '#64748b' },
-            { name: '駆け出しエンジニア', hours: 100, color: '#10b981' },
-            { name: 'ジュニアデベロッパー', hours: 300, color: '#3b82f6' },
-            { name: 'フルスタック見習い', hours: 500, color: '#8b5cf6' },
-            { name: 'ポートフォリオマスター', hours: 1000, color: '#f59e0b' },
-            { name: 'エントリーレベルエンジニア', hours: 1200, color: '#d97706' },
-            { name: 'ミドルレベルエンジニア', hours: 2000, color: '#ef4444' },
-            { name: 'シニアエンジニア', hours: 5000, color: '#7c3aed' }
+            { name: '学習スタート', hours: 0, color: '#e2e8f0', description: 'プログラミングの世界へようこそ！' },
+            { name: 'Hello World', hours: 1, color: '#cbd5e1', description: '最初のプログラムを書いた！' },
+            { name: '構文理解者', hours: 3, color: '#bfdbfe', description: '基本的な文法が分かってきた' },
+            { name: '変数マスター', hours: 5, color: '#93c5fd', description: '変数・データ型を理解' },
+            { name: '条件分岐使い', hours: 8, color: '#60a5fa', description: 'if文で処理を分けられる' },
+            { name: 'ループ使い', hours: 12, color: '#3b82f6', description: 'for/while文が使える' },
+            { name: '関数職人見習い', hours: 16, color: '#2563eb', description: '関数を作って使える' },
+            { name: '配列操縦士', hours: 20, color: '#1d4ed8', description: '配列・リストを操作できる' },
+            { name: 'デバッグ初心者', hours: 25, color: '#1e40af', description: 'エラーを読んで修正できる' },
+            { name: 'アルゴリズム入門者', hours: 30, color: '#1e3a8a', description: '簡単なアルゴリズムを理解' },
+            { name: 'オブジェクト理解者', hours: 35, color: '#10b981', description: 'オブジェクト・クラスの基本を理解' },
+            { name: 'ファイル操作者', hours: 40, color: '#059669', description: 'ファイルの読み書きができる' },
+            { name: 'API初体験', hours: 45, color: '#047857', description: '外部APIを使ってみた' },
+            { name: 'DOM操作者', hours: 50, color: '#065f46', description: 'Webページを動的に変更できる' },
+            { name: 'イベント使い', hours: 55, color: '#064e3b', description: 'ボタンクリックなどに反応できる' },
+            { name: '非同期入門', hours: 60, color: '#8b5cf6', description: '非同期処理の基本を理解' },
+            { name: 'データベース触れた', hours: 65, color: '#7c3aed', description: 'データベースの基本操作ができる' },
+            { name: 'CRUDマスター', hours: 70, color: '#6d28d9', description: '作成・読取・更新・削除ができる' },
+            { name: 'フレームワーク入門', hours: 75, color: '#5b21b6', description: 'React/Vueなどに触れた' },
+            { name: 'コンポーネント設計者', hours: 80, color: '#4c1d95', description: '再利用可能なパーツを作れる' },
+            { name: 'ルーティング理解者', hours: 85, color: '#f59e0b', description: 'ページ遷移を実装できる' },
+            { name: '状態管理入門', hours: 90, color: '#d97706', description: 'stateを適切に管理できる' },
+            { name: 'スタイリング職人', hours: 95, color: '#b45309', description: 'CSS/Tailwindで綺麗に装飾' },
+            { name: 'レスポンシブ対応者', hours: 100, color: '#92400e', description: 'スマホ・PCで見やすいページ' },
+            { name: 'Git使い', hours: 110, color: '#78350f', description: 'バージョン管理ができる' },
+            { name: 'GitHub連携者', hours: 120, color: '#ef4444', description: 'リモートリポジトリで管理' },
+            { name: 'デプロイ経験者', hours: 130, color: '#dc2626', description: 'アプリを公開できる' },
+            { name: '認証実装者', hours: 140, color: '#b91c1c', description: 'ログイン機能を作れる' },
+            { name: 'ミニアプリ完成', hours: 150, color: '#991b1b', description: '小さなアプリを1本完成させた' },
+            { name: 'フルスタック入門', hours: 170, color: '#7f1d1d', description: 'フロント・バックの両方触れる' },
+            { name: 'API設計者', hours: 190, color: '#6366f1', description: '自分でAPIを設計できる' },
+            { name: 'セキュリティ意識者', hours: 210, color: '#4f46e5', description: 'セキュリティを考えた実装' },
+            { name: 'テスト書き始め', hours: 230, color: '#4338ca', description: 'テストコードを書き始めた' },
+            { name: 'パフォーマンス意識', hours: 250, color: '#3730a3', description: '速度・最適化を考えられる' },
+            { name: 'ポートフォリオ1本', hours: 280, color: '#312e81', description: '見せられる作品が1つある' },
+            { name: 'ポートフォリオ2本', hours: 320, color: '#6366f1', description: '見せられる作品が2つある' },
+            { name: 'ポートフォリオ3本', hours: 360, color: '#818cf8', description: '見せられる作品が3つある' },
+            { name: '実務レベル入口', hours: 400, color: '#a78bfa', description: '実務で通用するスキル' },
+            { name: 'チーム開発経験', hours: 450, color: '#c4b5fd', description: 'チームでの開発を経験' },
+            { name: 'コードレビュアー', hours: 500, color: '#e0e7ff', description: '他人のコードを読める' },
+            { name: 'アーキテクト見習い', hours: 600, color: '#10b981', description: 'システム設計ができる' },
+            { name: 'ミドルエンジニア', hours: 800, color: '#059669', description: '一人で完結できる' },
+            { name: 'シニア候補', hours: 1000, color: '#047857', description: 'メンターができる' },
+            { name: 'シニアエンジニア', hours: 1500, color: '#065f46', description: '技術リーダー' },
+            { name: 'テックリード', hours: 2000, color: '#064e3b', description: 'チームを技術面でリード' },
+            { name: 'エキスパート', hours: 3000, color: '#7c3aed', description: '特定分野のスペシャリスト' }
           ];
 
           // 日付フォーマット（YYYY-MM-DD）
@@ -224,8 +260,18 @@
             setPausedTime(0);
           };
 
-          // 時間フォーマット
+          // 時間フォーマット（分単位）
           const formatTime = (seconds) => {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            if (hrs > 0) {
+              return `${hrs}h ${mins}m`;
+            }
+            return `${mins}m`;
+          };
+
+          // タイマー表示用（秒付き）
+          const formatTimerDisplay = (seconds) => {
             const hrs = Math.floor(seconds / 3600);
             const mins = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
@@ -408,7 +454,7 @@
                 <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
                   <div className="mb-6">
                     <div className="text-6xl font-mono font-bold text-gray-800 mb-4">
-                      {formatTime(currentSessionTime)}
+                      {formatTimerDisplay(currentSessionTime)}
                     </div>
                     {isStudying && (
                       <div className={`text-lg font-medium ${isPaused ? 'text-orange-600' : 'text-green-600'}`}>
@@ -453,9 +499,17 @@
 
                 {/* レベル表示 */}
                 <div className="bg-white rounded-2xl shadow-lg p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <Award className="w-6 h-6 text-indigo-600" />
-                    <h2 className="text-xl font-bold text-gray-800">エンジニア称号</h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <Award className="w-6 h-6 text-indigo-600" />
+                      <h2 className="text-xl font-bold text-gray-800">エンジニア称号</h2>
+                    </div>
+                    <button
+                      onClick={() => setShowLevelList(!showLevelList)}
+                      className="text-sm bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-4 py-2 rounded-lg transition-colors"
+                    >
+                      {showLevelList ? '閉じる' : '📜 ロードマップを見る'}
+                    </button>
                   </div>
                   
                   <div className="flex justify-between items-center mb-4">
@@ -463,6 +517,7 @@
                       <span className="text-2xl font-bold" style={{ color: levelInfo.current.color }}>
                         {levelInfo.current.name}
                       </span>
+                      <p className="text-sm text-gray-600 mt-1">{levelInfo.current.description}</p>
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-gray-800">{totalHours}h</div>
@@ -481,10 +536,74 @@
                           }}
                         ></div>
                       </div>
-                      <div className="text-sm text-gray-600 text-center">
-                        次の称号まで: {levelInfo.next.hours - totalHours}h
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          次: <span className="font-bold" style={{ color: levelInfo.next.color }}>{levelInfo.next.name}</span>
+                        </span>
+                        <span className="font-bold text-indigo-600">
+                          あと {levelInfo.next.hours - totalHours}h
+                        </span>
                       </div>
+                      <p className="text-xs text-gray-500 mt-1">📌 {levelInfo.next.description}</p>
                     </>
+                  )}
+
+                  {/* 全レベル一覧 */}
+                  {showLevelList && (
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <h3 className="text-lg font-bold text-gray-800 mb-4">🗺️ 学習ロードマップ</h3>
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {engineerLevels.map((level, index) => {
+                          const isCompleted = totalHours >= level.hours;
+                          const isCurrent = levelInfo.current.hours === level.hours;
+                          const isNext = levelInfo.next && levelInfo.next.hours === level.hours;
+                          
+                          return (
+                            <div
+                              key={index}
+                              className={`p-3 rounded-lg border-2 transition-all ${
+                                isCurrent 
+                                  ? 'border-indigo-500 bg-indigo-50' 
+                                  : isNext
+                                  ? 'border-orange-400 bg-orange-50'
+                                  : isCompleted 
+                                  ? 'border-green-300 bg-green-50' 
+                                  : 'border-gray-200 bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2">
+                                    {isCompleted && <span className="text-green-600">✅</span>}
+                                    {isCurrent && <span className="text-indigo-600">📍</span>}
+                                    {isNext && <span className="text-orange-600">🎯</span>}
+                                    <span 
+                                      className="font-bold"
+                                      style={{ color: isCompleted ? level.color : '#9ca3af' }}
+                                    >
+                                      {level.name}
+                                    </span>
+                                  </div>
+                                  <p className={`text-sm mt-1 ${isCompleted ? 'text-gray-700' : 'text-gray-500'}`}>
+                                    {level.description}
+                                  </p>
+                                </div>
+                                <div className="text-right ml-4">
+                                  <div className={`font-bold ${isCompleted ? 'text-gray-800' : 'text-gray-400'}`}>
+                                    {level.hours}h
+                                  </div>
+                                  {!isCompleted && level.hours > totalHours && (
+                                    <div className="text-xs text-gray-500">
+                                      あと{level.hours - totalHours}h
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
 
@@ -496,10 +615,10 @@
                       <h2 className="text-xl font-bold text-gray-800">今日の学習</h2>
                     </div>
                     <div className="text-4xl font-bold text-blue-600 mb-2">
-                      {Math.floor(todayTime / 3600)}h {Math.floor((todayTime % 3600) / 60)}m
+                      {formatTime(todayTime)}
                     </div>
                     <div className="text-sm text-gray-600">
-                      昨日: {Math.floor(yesterdayTime / 3600)}h {Math.floor((yesterdayTime % 3600) / 60)}m
+                      昨日: {formatTime(yesterdayTime)}
                       {todayTime > yesterdayTime ? (
                         <span className="text-green-600 ml-2">📈 +{Math.floor((todayTime - yesterdayTime) / 60)}m</span>
                       ) : todayTime < yesterdayTime ? (
@@ -536,7 +655,7 @@
                       <div className="flex justify-between mb-1">
                         <span className="font-bold text-gray-800">今週</span>
                         <span className="font-bold text-purple-600">
-                          {Math.floor(thisWeekTime / 3600)}h {Math.floor((thisWeekTime % 3600) / 60)}m
+                          {formatTime(thisWeekTime)}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3">
@@ -551,7 +670,7 @@
                       <div className="flex justify-between mb-1">
                         <span className="text-gray-700">先週</span>
                         <span className="text-gray-700">
-                          {Math.floor(lastWeekTime / 3600)}h {Math.floor((lastWeekTime % 3600) / 60)}m
+                          {formatTime(lastWeekTime)}
                           {thisWeekTime > lastWeekTime ? (
                             <span className="text-green-600 ml-2">📈</span>
                           ) : thisWeekTime < lastWeekTime ? (
@@ -573,7 +692,7 @@
                       <div className="flex justify-between mb-1">
                         <span className="text-gray-700">先々週</span>
                         <span className="text-gray-700">
-                          {Math.floor(twoWeeksAgoTime / 3600)}h {Math.floor((twoWeeksAgoTime % 3600) / 60)}m
+                          {formatTime(twoWeeksAgoTime)}
                           {lastWeekTime > twoWeeksAgoTime ? (
                             <span className="text-green-600 ml-2">📈</span>
                           ) : lastWeekTime < twoWeeksAgoTime ? (
@@ -598,7 +717,7 @@
                   <div className="bg-white rounded-xl shadow-lg p-6 text-center">
                     <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-gray-800">
-                      {Math.floor(dailyAvg / 3600)}h {Math.floor((dailyAvg % 3600) / 60)}m
+                      {formatTime(dailyAvg)}
                     </div>
                     <div className="text-sm text-gray-600">1日平均学習時間</div>
                   </div>
@@ -606,7 +725,7 @@
                   <div className="bg-white rounded-xl shadow-lg p-6 text-center">
                     <TrendingUp className="w-8 h-8 text-green-500 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-gray-800">
-                      {Math.floor(weeklyAvg / 3600)}h {Math.floor((weeklyAvg % 3600) / 60)}m
+                      {formatTime(weeklyAvg)}
                     </div>
                     <div className="text-sm text-gray-600">1週間平均学習時間</div>
                   </div>
