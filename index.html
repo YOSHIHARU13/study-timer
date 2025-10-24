@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>エンジニア学習タイマー（Firebase版）</title>
+    <title>エンジニア学習タイマー（改善版）</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -15,17 +15,17 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     
     <script type="module">
-        import { Play, Pause, Square, Clock, TrendingUp, Target, User, LogOut } from 'https://cdn.skypack.dev/lucide-react';
-        window.LucideIcons = { Play, Pause, Square, Clock, TrendingUp, Target, User, LogOut };
+        import { Play, Pause, Square, Clock, TrendingUp, Target, User, LogOut, Calendar, BarChart3, Award, Flame } from 'https://cdn.skypack.dev/lucide-react';
+        window.LucideIcons = { Play, Pause, Square, Clock, TrendingUp, Target, User, LogOut, Calendar, BarChart3, Award, Flame };
     </script>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-        const { Play, Pause, Square, Clock, TrendingUp, Target, User, LogOut } = window.LucideIcons;
+        const { Play, Pause, Square, Clock, TrendingUp, Target, User, LogOut, Calendar, BarChart3, Award, Flame } = window.LucideIcons;
 
-        // Firebase設定（あなたの実際の設定）
+        // Firebase設定
         const firebaseConfig = {
           apiKey: "AIzaSyDT6UPrNLx-Gc6X5jmXfvEx9nljyoU6gcY",
           authDomain: "study-timer-4cf6c.firebaseapp.com",
@@ -35,7 +35,6 @@
           appId: "1:602384256321:web:b44a4632cc830b5f2ee5c0"
         };
 
-        // Firebase初期化
         if (!firebase.apps.length) {
           firebase.initializeApp(firebaseConfig);
         }
@@ -49,48 +48,44 @@
           const [currentSessionTime, setCurrentSessionTime] = useState(0);
           const [sessionStartTime, setSessionStartTime] = useState(null);
           const [pausedTime, setPausedTime] = useState(0);
-          const [totalStudyTime, setTotalStudyTime] = useState(0);
-          const [studyHistory, setStudyHistory] = useState([]);
+          const [dailyRecords, setDailyRecords] = useState({});
           const [loading, setLoading] = useState(true);
           const [syncing, setSyncing] = useState(false);
           
           const intervalRef = useRef(null);
 
-          // エンジニアレベルの定義（時間）
           const engineerLevels = [
-            { name: '未経験者', hours: 0, color: '#e2e8f0', description: 'プログラミング学習スタート！' },
-            { name: '学習者', hours: 5, color: '#cbd5e1', description: 'プログラミングとは何かを理解' },
-            { name: '初学者', hours: 15, color: '#94a3b8', description: '基本的な文法・構文を学習' },
-            { name: '練習生', hours: 30, color: '#64748b', description: '簡単なプログラムが書ける' },
-            { name: '基礎習得者', hours: 50, color: '#475569', description: '基本概念をしっかり理解' },
-            { name: '応用学習者', hours: 75, color: '#334155', description: '少し複雑な処理に挑戦' },
-            { name: '駆け出しエンジニア', hours: 100, color: '#10b981', description: '基礎は一通り身についた' },
-            { name: 'ジュニア見習い', hours: 130, color: '#059669', description: '実際のアプリ作りに挑戦' },
-            { name: 'コードライター', hours: 170, color: '#047857', description: '見よう見まねで簡単なものが作れる' },
-            { name: 'デバッガー', hours: 220, color: '#065f46', description: 'なぜ動くかが分かってきた' },
-            { name: 'アプリクリエイター', hours: 280, color: '#064e3b', description: '応用的な機能も実装できる' },
-            { name: 'ジュニアデベロッパー', hours: 300, color: '#3b82f6', description: '一人で簡単なアプリを作れる' },
-            { name: 'テックラーナー', hours: 350, color: '#2563eb', description: '新しい技術・フレームワークを学習' },
-            { name: 'フロントエンドビギナー', hours: 400, color: '#1d4ed8', description: '複数の技術を組み合わせ始める' },
-            { name: 'コードアーキテクト見習い', hours: 450, color: '#1e40af', description: 'コードの設計を意識するように' },
-            { name: 'フルスタック見習い', hours: 500, color: '#8b5cf6', description: 'フレームワーク・API連携ができる' },
-            { name: 'ソリューションビルダー', hours: 600, color: '#7c3aed', description: '複雑な機能も実装できるように' },
-            { name: 'トラブルシューター', hours: 700, color: '#6d28d9', description: 'エラーや問題を自力で解決' },
-            { name: 'システムデザイナー', hours: 800, color: '#5b21b6', description: 'アプリ全体の設計ができる' },
-            { name: 'クオリティガーディアン', hours: 900, color: '#4c1d95', description: 'コード品質・テストを意識' },
-            { name: 'ポートフォリオマスター', hours: 1000, color: '#f59e0b', description: '就活で見せられるポートフォリオ完成' },
-            { name: 'エントリーレベルエンジニア', hours: 1200, color: '#d97706', description: '実務でも使えるスキルレベル' },
-            { name: 'チームプレイヤー', hours: 1400, color: '#b45309', description: 'チーム開発・協力ができる' },
-            { name: 'プロダクトオーナー', hours: 1600, color: '#92400e', description: '保守・運用まで考えた開発' },
-            { name: 'テックリーダー候補', hours: 1800, color: '#78350f', description: '適切な技術選定ができる' },
-            { name: 'ミドルレベルエンジニア', hours: 2000, color: '#ef4444', description: '設計〜デプロイまで一人で可能' },
-            { name: 'プロジェクトリーダー', hours: 2500, color: '#dc2626', description: 'プロジェクトをリードできる' },
-            { name: 'シニアメンター', hours: 3000, color: '#b91c1c', description: '後輩の指導・サポートができる' },
-            { name: 'システムアーキテクト', hours: 3500, color: '#991b1b', description: 'システム全体の設計ができる' },
-            { name: 'テクニカルアドバイザー', hours: 4000, color: '#7f1d1d', description: '技術的な意思決定ができる' },
-            { name: 'ドメインスペシャリスト', hours: 4500, color: '#6b1d1d', description: '特定分野のスペシャリスト' },
-            { name: 'シニアエンジニア', hours: 5000, color: '#7c3aed', description: 'フルスタック・一人前のエンジニア' }
+            { name: '未経験者', hours: 0, color: '#e2e8f0' },
+            { name: '学習者', hours: 5, color: '#cbd5e1' },
+            { name: '初学者', hours: 15, color: '#94a3b8' },
+            { name: '練習生', hours: 30, color: '#64748b' },
+            { name: '駆け出しエンジニア', hours: 100, color: '#10b981' },
+            { name: 'ジュニアデベロッパー', hours: 300, color: '#3b82f6' },
+            { name: 'フルスタック見習い', hours: 500, color: '#8b5cf6' },
+            { name: 'ポートフォリオマスター', hours: 1000, color: '#f59e0b' },
+            { name: 'エントリーレベルエンジニア', hours: 1200, color: '#d97706' },
+            { name: 'ミドルレベルエンジニア', hours: 2000, color: '#ef4444' },
+            { name: 'シニアエンジニア', hours: 5000, color: '#7c3aed' }
           ];
+
+          // 日付フォーマット（YYYY-MM-DD）
+          const formatDate = (date) => {
+            return date.toISOString().split('T')[0];
+          };
+
+          // 週の開始日（月曜日）を取得
+          const getWeekStart = (date) => {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+          };
+
+          // 週のキー（YYYY-Wxx形式）
+          const getWeekKey = (date) => {
+            const weekStart = getWeekStart(date);
+            return formatDate(weekStart);
+          };
 
           // 認証状態の監視
           useEffect(() => {
@@ -99,24 +94,21 @@
               if (user) {
                 loadUserData(user.uid);
               } else {
-                setTotalStudyTime(0);
-                setStudyHistory([]);
+                setDailyRecords({});
               }
               setLoading(false);
             });
-
             return () => unsubscribe();
           }, []);
 
-          // ユーザーデータを読み込み
+          // ユーザーデータ読み込み
           const loadUserData = async (userId) => {
             try {
               setSyncing(true);
               const userDoc = await db.collection('users').doc(userId).get();
               if (userDoc.exists) {
                 const data = userDoc.data();
-                setTotalStudyTime(data.totalStudyTime || 0);
-                setStudyHistory(data.studyHistory || []);
+                setDailyRecords(data.dailyRecords || {});
               }
             } catch (error) {
               console.error('データ読み込みエラー:', error);
@@ -125,133 +117,87 @@
             }
           };
 
-          // データをFirestoreに保存
-          const saveToFirestore = async (newTotalTime, newHistory) => {
+          // Firestoreに保存
+          const saveToFirestore = async (newDailyRecords) => {
             if (!user) return;
-            
             try {
               setSyncing(true);
               await db.collection('users').doc(user.uid).set({
-                totalStudyTime: newTotalTime,
-                studyHistory: newHistory,
+                dailyRecords: newDailyRecords,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
               });
             } catch (error) {
               console.error('データ保存エラー:', error);
-              alert('データの保存に失敗しました。インターネット接続を確認してください。');
+              alert('データの保存に失敗しました。');
             } finally {
               setSyncing(false);
             }
           };
 
-          // Googleログイン
+          // ログイン処理
           const signInWithGoogle = async () => {
             try {
               const provider = new firebase.auth.GoogleAuthProvider();
               await auth.signInWithPopup(provider);
             } catch (error) {
               console.error('ログインエラー:', error);
-              alert('ログインに失敗しました。');
             }
           };
 
-          // 匿名ログイン
           const signInAnonymously = async () => {
             try {
               await auth.signInAnonymously();
             } catch (error) {
               console.error('匿名ログインエラー:', error);
-              alert('匿名ログインに失敗しました。');
             }
           };
 
-          // ログアウト
           const signOut = async () => {
-            try {
-              await auth.signOut();
-            } catch (error) {
-              console.error('ログアウトエラー:', error);
-            }
-          };
-
-          // 現在のレベルを計算
-          const getCurrentLevel = () => {
-            const totalHours = totalStudyTime / 3600;
-            for (let i = engineerLevels.length - 1; i >= 0; i--) {
-              if (totalHours >= engineerLevels[i].hours) {
-                return {
-                  current: engineerLevels[i],
-                  next: engineerLevels[i + 1] || null,
-                  progress: engineerLevels[i + 1] 
-                    ? ((totalHours - engineerLevels[i].hours) / (engineerLevels[i + 1].hours - engineerLevels[i].hours)) * 100
-                    : 100
-                };
-              }
-            }
-            return {
-              current: engineerLevels[0],
-              next: engineerLevels[1],
-              progress: (totalHours / engineerLevels[1].hours) * 100
-            };
+            await auth.signOut();
           };
 
           // タイマー開始
           const startTimer = () => {
             setIsStudying(true);
             setIsPaused(false);
-            setSessionStartTime(new Date());
-            setCurrentSessionTime(0);
+            setSessionStartTime(Date.now());
             setPausedTime(0);
             
             intervalRef.current = setInterval(() => {
-              setCurrentSessionTime(prev => prev + 1);
+              setCurrentSessionTime((prev) => prev + 1);
             }, 1000);
           };
 
-          // 休憩（一時停止）
+          // 一時停止
           const pauseTimer = () => {
             if (isPaused) {
-              // 休憩終了 - 新しい開始時間を設定
-              const resumeTime = Date.now();
-              const previousDuration = currentSessionTime;
               setIsPaused(false);
-              setSessionStartTime(resumeTime - (previousDuration * 1000));
-              
+              setSessionStartTime(Date.now() - pausedTime);
               intervalRef.current = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - (resumeTime - (previousDuration * 1000))) / 1000);
-                setCurrentSessionTime(elapsed);
+                setCurrentSessionTime((prev) => prev + 1);
               }, 1000);
             } else {
-              // 休憩開始
               setIsPaused(true);
+              setPausedTime(Date.now() - sessionStartTime);
               clearInterval(intervalRef.current);
             }
           };
 
-          // 学習終了
-          const stopTimer = async () => {
+          // 終了
+          const stopTimer = () => {
             clearInterval(intervalRef.current);
             
             if (currentSessionTime > 0) {
-              const endTime = new Date();
-              const actualStartTime = new Date(endTime.getTime() - (currentSessionTime * 1000));
+              const today = formatDate(new Date());
+              const newDailyRecords = { ...dailyRecords };
               
-              const newSession = {
-                id: Date.now(),
-                date: endTime.toLocaleDateString('ja-JP'),
-                startTime: actualStartTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-                endTime: endTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
-                duration: currentSessionTime
-              };
-
-              const newTotalTime = totalStudyTime + currentSessionTime;
-              const newHistory = [newSession, ...studyHistory].slice(0, 10);
-
-              setTotalStudyTime(newTotalTime);
-              setStudyHistory(newHistory);
+              if (!newDailyRecords[today]) {
+                newDailyRecords[today] = 0;
+              }
+              newDailyRecords[today] += currentSessionTime;
               
-              // Firestoreに保存
-              await saveToFirestore(newTotalTime, newHistory);
+              setDailyRecords(newDailyRecords);
+              saveToFirestore(newDailyRecords);
             }
             
             setIsStudying(false);
@@ -261,89 +207,184 @@
             setPausedTime(0);
           };
 
-          // 時間をフォーマット
+          // 時間フォーマット
           const formatTime = (seconds) => {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
-            
-            if (hours > 0) {
-              return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            }
-            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+            return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
           };
 
-          // ローディング画面
+          // 合計学習時間（秒）
+          const getTotalStudyTime = () => {
+            return Object.values(dailyRecords).reduce((sum, time) => sum + time, 0);
+          };
+
+          // 今日の学習時間
+          const getTodayTime = () => {
+            const today = formatDate(new Date());
+            return dailyRecords[today] || 0;
+          };
+
+          // 昨日の学習時間
+          const getYesterdayTime = () => {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            return dailyRecords[formatDate(yesterday)] || 0;
+          };
+
+          // 今週の学習時間
+          const getThisWeekTime = () => {
+            const weekStart = getWeekStart(new Date());
+            let total = 0;
+            for (let i = 0; i < 7; i++) {
+              const date = new Date(weekStart);
+              date.setDate(date.getDate() + i);
+              total += dailyRecords[formatDate(date)] || 0;
+            }
+            return total;
+          };
+
+          // 先週の学習時間
+          const getLastWeekTime = () => {
+            const lastWeekStart = new Date(getWeekStart(new Date()));
+            lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+            let total = 0;
+            for (let i = 0; i < 7; i++) {
+              const date = new Date(lastWeekStart);
+              date.setDate(date.getDate() + i);
+              total += dailyRecords[formatDate(date)] || 0;
+            }
+            return total;
+          };
+
+          // 先々週の学習時間
+          const getTwoWeeksAgoTime = () => {
+            const twoWeeksAgoStart = new Date(getWeekStart(new Date()));
+            twoWeeksAgoStart.setDate(twoWeeksAgoStart.getDate() - 14);
+            let total = 0;
+            for (let i = 0; i < 7; i++) {
+              const date = new Date(twoWeeksAgoStart);
+              date.setDate(date.getDate() + i);
+              total += dailyRecords[formatDate(date)] || 0;
+            }
+            return total;
+          };
+
+          // 平均（日別）
+          const getDailyAverage = () => {
+            const days = Object.keys(dailyRecords).length;
+            return days > 0 ? getTotalStudyTime() / days : 0;
+          };
+
+          // 平均（週別）
+          const getWeeklyAverage = () => {
+            const weeks = new Set();
+            Object.keys(dailyRecords).forEach(date => {
+              weeks.add(getWeekKey(new Date(date)));
+            });
+            return weeks.size > 0 ? getTotalStudyTime() / weeks.size : 0;
+          };
+
+          // レベル情報
+          const getLevelInfo = () => {
+            const totalHours = getTotalStudyTime() / 3600;
+            let currentLevel = engineerLevels[0];
+            let nextLevel = engineerLevels[1];
+            
+            for (let i = 0; i < engineerLevels.length; i++) {
+              if (totalHours >= engineerLevels[i].hours) {
+                currentLevel = engineerLevels[i];
+                nextLevel = engineerLevels[i + 1] || null;
+              } else {
+                break;
+              }
+            }
+            
+            const progress = nextLevel 
+              ? ((totalHours - currentLevel.hours) / (nextLevel.hours - currentLevel.hours)) * 100
+              : 100;
+            
+            return { current: currentLevel, next: nextLevel, progress };
+          };
+
+          // 連続学習日数
+          const getStreak = () => {
+            const today = new Date();
+            let streak = 0;
+            for (let i = 0; i < 365; i++) {
+              const date = new Date(today);
+              date.setDate(date.getDate() - i);
+              if (dailyRecords[formatDate(date)] && dailyRecords[formatDate(date)] > 0) {
+                streak++;
+              } else if (i > 0) {
+                break;
+              }
+            }
+            return streak;
+          };
+
+          const totalHours = Math.floor(getTotalStudyTime() / 3600);
+          const levelInfo = getLevelInfo();
+          const todayTime = getTodayTime();
+          const yesterdayTime = getYesterdayTime();
+          const thisWeekTime = getThisWeekTime();
+          const lastWeekTime = getLastWeekTime();
+          const twoWeeksAgoTime = getTwoWeeksAgoTime();
+          const dailyAvg = getDailyAverage();
+          const weeklyAvg = getWeeklyAverage();
+          const streak = getStreak();
+
           if (loading) {
             return (
-              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-                  <p className="text-xl text-gray-600">アプリを読み込み中...</p>
-                </div>
+              <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 flex items-center justify-center">
+                <div className="text-2xl font-bold text-indigo-600">読み込み中...</div>
               </div>
             );
           }
 
-          // ログイン画面
           if (!user) {
             return (
-              <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-                  <h1 className="text-3xl font-bold text-gray-800 mb-2">🚀 エンジニア学習タイマー</h1>
-                  <p className="text-gray-600 mb-8">クラウド同期で安全にデータを保存</p>
-                  
+              <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-6">学習タイマー</h1>
                   <div className="space-y-4">
                     <button
                       onClick={signInWithGoogle}
-                      className="w-full bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
+                      className="w-full bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 py-3 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
                     >
-                      <span>📧 Googleでログイン</span>
+                      <span>Googleでログイン</span>
                     </button>
-                    
                     <button
                       onClick={signInAnonymously}
-                      className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 px-6 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-medium transition-colors"
                     >
-                      <span>🔒 匿名でログイン</span>
+                      ゲストで始める
                     </button>
                   </div>
-                  
-                  <p className="text-sm text-gray-500 mt-6">
-                    ※匿名ログインの場合、ブラウザを削除するとデータが失われる可能性があります
-                  </p>
                 </div>
               </div>
             );
           }
 
-          const levelInfo = getCurrentLevel();
-
           return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-              <div className="max-w-4xl mx-auto space-y-6">
+            <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-pink-100 p-4">
+              <div className="max-w-6xl mx-auto space-y-6">
                 {/* ヘッダー */}
-                <div className="text-center py-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <div></div>
-                    <h1 className="text-3xl font-bold text-gray-800">🚀 エンジニア学習タイマー</h1>
-                    <div className="flex items-center space-x-2">
-                      {syncing && (
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
-                      )}
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
-                        <User className="w-4 h-4" />
-                        <span>{user.email || '匿名ユーザー'}</span>
-                      </div>
-                      <button
-                        onClick={signOut}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                        <LogOut className="w-4 h-4" />
-                      </button>
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h1 className="text-3xl font-bold text-gray-800">学習タイマー</h1>
+                      <p className="text-gray-600">継続は力なり 🔥</p>
                     </div>
+                    <button
+                      onClick={signOut}
+                      className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      <span>ログアウト</span>
+                    </button>
                   </div>
-                  <p className="text-gray-600">クラウド同期で安全にデータを保存・管理</p>
                 </div>
 
                 {/* メインタイマー */}
@@ -393,110 +434,188 @@
                   </div>
                 </div>
 
-                {/* レベル表示とプログレスバー */}
+                {/* レベル表示 */}
                 <div className="bg-white rounded-2xl shadow-lg p-6">
                   <div className="flex items-center space-x-3 mb-4">
-                    <Target className="w-6 h-6 text-indigo-600" />
+                    <Award className="w-6 h-6 text-indigo-600" />
                     <h2 className="text-xl font-bold text-gray-800">エンジニア称号</h2>
                   </div>
                   
-                  <div className="mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <div>
-                        <span className="text-2xl font-bold" style={{ color: levelInfo.current.color }}>
-                          {levelInfo.current.name}
-                        </span>
-                        <p className="text-gray-600 text-sm">{levelInfo.current.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-gray-800">
-                          {Math.floor(totalStudyTime / 3600)}h
-                        </div>
-                        <div className="text-sm text-gray-600">累積時間</div>
-                      </div>
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <span className="text-2xl font-bold" style={{ color: levelInfo.current.color }}>
+                        {levelInfo.current.name}
+                      </span>
                     </div>
-                    
-                    {levelInfo.next && (
-                      <>
-                        <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                          <div
-                            className="h-3 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${Math.min(levelInfo.progress, 100)}%`,
-                              backgroundColor: levelInfo.current.color 
-                            }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between text-sm text-gray-600">
-                          <span>現在: {levelInfo.current.hours}h</span>
-                          <span>次の称号まで: {levelInfo.next.hours - Math.floor(totalStudyTime / 3600)}h</span>
-                          <span>目標: {levelInfo.next.hours}h ({levelInfo.next.name})</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* 学習履歴 */}
-                <div className="bg-white rounded-2xl shadow-lg p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <Clock className="w-6 h-6 text-indigo-600" />
-                    <h2 className="text-xl font-bold text-gray-800">学習履歴</h2>
-                    {syncing && <span className="text-sm text-blue-600">☁️ 同期中...</span>}
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-gray-800">{totalHours}h</div>
+                      <div className="text-sm text-gray-600">累積時間</div>
+                    </div>
                   </div>
                   
-                  {studyHistory.length > 0 ? (
-                    <div className="space-y-3">
-                      {studyHistory.map((session) => (
-                        <div key={session.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <div className="font-medium text-gray-800">{session.date}</div>
-                            <div className="text-sm text-gray-600">
-                              {session.startTime} - {session.endTime}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold text-indigo-600">
-                              {formatTime(session.duration)}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">
-                      まだ学習記録がありません。<br />
-                      学習を開始して記録を残しましょう！
-                    </p>
+                  {levelInfo.next && (
+                    <>
+                      <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                        <div
+                          className="h-3 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${Math.min(levelInfo.progress, 100)}%`,
+                            backgroundColor: levelInfo.current.color 
+                          }}
+                        ></div>
+                      </div>
+                      <div className="text-sm text-gray-600 text-center">
+                        次の称号まで: {levelInfo.next.hours - totalHours}h
+                      </div>
+                    </>
                   )}
                 </div>
 
-                {/* 統計情報 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white rounded-xl shadow p-6 text-center">
-                    <TrendingUp className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-gray-800">
-                      {studyHistory.length}
+                {/* 今日の実績 & 連続日数 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <Calendar className="w-6 h-6 text-blue-600" />
+                      <h2 className="text-xl font-bold text-gray-800">今日の学習</h2>
                     </div>
-                    <div className="text-sm text-gray-600">学習セッション数</div>
+                    <div className="text-4xl font-bold text-blue-600 mb-2">
+                      {Math.floor(todayTime / 3600)}h {Math.floor((todayTime % 3600) / 60)}m
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      昨日: {Math.floor(yesterdayTime / 3600)}h {Math.floor((yesterdayTime % 3600) / 60)}m
+                      {todayTime > yesterdayTime ? (
+                        <span className="text-green-600 ml-2">📈 +{Math.floor((todayTime - yesterdayTime) / 60)}m</span>
+                      ) : todayTime < yesterdayTime ? (
+                        <span className="text-red-600 ml-2">📉 -{Math.floor((yesterdayTime - todayTime) / 60)}m</span>
+                      ) : (
+                        <span className="text-gray-600 ml-2">➡️ 同じ</span>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="bg-white rounded-xl shadow p-6 text-center">
-                    <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-gray-800">
-                      {studyHistory.length > 0 ? Math.floor((totalStudyTime / studyHistory.length) / 60) : 0}分
+
+                  <div className="bg-white rounded-xl shadow-lg p-6">
+                    <div className="flex items-center space-x-3 mb-4">
+                      <Flame className="w-6 h-6 text-orange-600" />
+                      <h2 className="text-xl font-bold text-gray-800">連続学習</h2>
                     </div>
-                    <div className="text-sm text-gray-600">平均学習時間</div>
-                  </div>
-                  
-                  <div className="bg-white rounded-xl shadow p-6 text-center">
-                    <Target className="w-8 h-8 text-purple-500 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-gray-800">
-                      {levelInfo.next ? levelInfo.next.hours - Math.floor(totalStudyTime / 3600) : 0}h
+                    <div className="text-4xl font-bold text-orange-600 mb-2">
+                      {streak}日
                     </div>
-                    <div className="text-sm text-gray-600">次の称号まで</div>
+                    <div className="text-sm text-gray-600">
+                      {streak >= 7 ? '素晴らしい！' : streak >= 3 ? '良い調子！' : '頑張ろう！'}
+                    </div>
                   </div>
                 </div>
+
+                {/* 週別比較 */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <BarChart3 className="w-6 h-6 text-purple-600" />
+                    <h2 className="text-xl font-bold text-gray-800">週別学習時間</h2>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="font-bold text-gray-800">今週</span>
+                        <span className="font-bold text-purple-600">
+                          {Math.floor(thisWeekTime / 3600)}h {Math.floor((thisWeekTime % 3600) / 60)}m
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="h-3 rounded-full bg-purple-600"
+                          style={{ width: `${Math.min((thisWeekTime / (40 * 3600)) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-700">先週</span>
+                        <span className="text-gray-700">
+                          {Math.floor(lastWeekTime / 3600)}h {Math.floor((lastWeekTime % 3600) / 60)}m
+                          {thisWeekTime > lastWeekTime ? (
+                            <span className="text-green-600 ml-2">📈</span>
+                          ) : thisWeekTime < lastWeekTime ? (
+                            <span className="text-red-600 ml-2">📉</span>
+                          ) : (
+                            <span className="text-gray-600 ml-2">➡️</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="h-2 rounded-full bg-gray-400"
+                          style={{ width: `${Math.min((lastWeekTime / (40 * 3600)) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-700">先々週</span>
+                        <span className="text-gray-700">
+                          {Math.floor(twoWeeksAgoTime / 3600)}h {Math.floor((twoWeeksAgoTime % 3600) / 60)}m
+                          {lastWeekTime > twoWeeksAgoTime ? (
+                            <span className="text-green-600 ml-2">📈</span>
+                          ) : lastWeekTime < twoWeeksAgoTime ? (
+                            <span className="text-red-600 ml-2">📉</span>
+                          ) : (
+                            <span className="text-gray-600 ml-2">➡️</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="h-2 rounded-full bg-gray-300"
+                          style={{ width: `${Math.min((twoWeeksAgoTime / (40 * 3600)) * 100, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 平均学習時間 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+                    <Clock className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-gray-800">
+                      {Math.floor(dailyAvg / 3600)}h {Math.floor((dailyAvg % 3600) / 60)}m
+                    </div>
+                    <div className="text-sm text-gray-600">1日平均学習時間</div>
+                  </div>
+                  
+                  <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+                    <TrendingUp className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                    <div className="text-2xl font-bold text-gray-800">
+                      {Math.floor(weeklyAvg / 3600)}h {Math.floor((weeklyAvg % 3600) / 60)}m
+                    </div>
+                    <div className="text-sm text-gray-600">1週間平均学習時間</div>
+                  </div>
+                </div>
+
+                {/* モチベーションメッセージ */}
+                <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg p-6 text-white text-center">
+                  <div className="text-xl font-bold mb-2">
+                    {streak >= 30 ? '🏆 継続の王者！' : 
+                     streak >= 14 ? '🔥 継続力が素晴らしい！' :
+                     streak >= 7 ? '💪 1週間継続達成！' :
+                     streak >= 3 ? '👍 良いペース！' :
+                     '🚀 今日も頑張ろう！'}
+                  </div>
+                  <div className="text-sm opacity-90">
+                    {todayTime === 0 ? '今日の学習を始めましょう！' :
+                     todayTime > yesterdayTime ? '昨日より成長している！' :
+                     '継続が力になる！'}
+                  </div>
+                </div>
+
+                {syncing && (
+                  <div className="text-center text-blue-600 text-sm">
+                    ☁️ 同期中...
+                  </div>
+                )}
               </div>
             </div>
           );
