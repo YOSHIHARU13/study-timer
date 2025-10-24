@@ -25,35 +25,6 @@
         const { useState, useEffect, useRef } = React;
         const { Play, Pause, Square, Clock, TrendingUp, Target, User, LogOut, Calendar, BarChart3, Award, Flame } = window.LucideIcons;
 
-        // デバッグ用: ブラウザコンソールで使える関数
-        window.resetToday = async () => {
-          const user = firebase.auth().currentUser;
-          if (!user) {
-            console.error('ログインしていません');
-            return;
-          }
-          
-          const today = new Date().toISOString().split('T')[0];
-          const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
-          
-          if (userDoc.exists) {
-            const data = userDoc.data();
-            const records = data.dailyRecords || {};
-            
-            console.log('現在の今日のデータ:', records[today], '秒 =', Math.floor(records[today] / 3600), '時間');
-            
-            records[today] = 35 * 3600 + 80 * 60; // 35時間 + 80分
-            
-            await firebase.firestore().collection('users').doc(user.uid).set({
-              dailyRecords: records,
-              lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            console.log('✅ 今日のデータを35時間80分にリセットしました');
-            console.log('ページをリロードしてください');
-          }
-        };
-
         // Firebase設定
         const firebaseConfig = {
           apiKey: "AIzaSyDT6UPrNLx-Gc6X5jmXfvEx9nljyoU6gcY",
@@ -439,41 +410,6 @@
                     >
                       ゲストで始める
                     </button>
-                    
-                    <div className="pt-4 border-t border-gray-200">
-                      <p className="text-sm text-gray-600 mb-2">データがおかしくなった場合</p>
-                      <button
-                        onClick={async () => {
-                          if (!window.confirm('⚠️ ログイン後、今日のデータを35時間にリセットします。よろしいですか？')) return;
-                          
-                          try {
-                            await signInWithGoogle();
-                            
-                            // ログイン完了を待つ
-                            setTimeout(async () => {
-                              const currentUser = firebase.auth().currentUser;
-                              if (!currentUser) return;
-                              
-                              const today = new Date().toISOString().split('T')[0];
-                              const targetSeconds = 35 * 3600; // 35時間
-                              
-                              await db.collection('users').doc(currentUser.uid).set({
-                                dailyRecords: { [today]: targetSeconds },
-                                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                              });
-                              
-                              alert('✅ データを35時間にリセットしました！');
-                              window.location.reload();
-                            }, 2000);
-                          } catch (error) {
-                            alert('エラーが発生しました');
-                          }
-                        }}
-                        className="w-full bg-red-100 hover:bg-red-200 text-red-700 py-2 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        🔧 35時間にリセット（緊急用）
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>
