@@ -25,6 +25,35 @@
         const { useState, useEffect, useRef } = React;
         const { Play, Pause, Square, Clock, TrendingUp, Target, User, LogOut, Calendar, BarChart3, Award, Flame } = window.LucideIcons;
 
+        // デバッグ用: ブラウザコンソールで使える関数
+        window.resetToday = async () => {
+          const user = firebase.auth().currentUser;
+          if (!user) {
+            console.error('ログインしていません');
+            return;
+          }
+          
+          const today = new Date().toISOString().split('T')[0];
+          const userDoc = await firebase.firestore().collection('users').doc(user.uid).get();
+          
+          if (userDoc.exists) {
+            const data = userDoc.data();
+            const records = data.dailyRecords || {};
+            
+            console.log('現在の今日のデータ:', records[today], '秒 =', Math.floor(records[today] / 3600), '時間');
+            
+            records[today] = 35 * 3600 + 80 * 60; // 35時間 + 80分
+            
+            await firebase.firestore().collection('users').doc(user.uid).set({
+              dailyRecords: records,
+              lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            console.log('✅ 今日のデータを35時間80分にリセットしました');
+            console.log('ページをリロードしてください');
+          }
+        };
+
         // Firebase設定
         const firebaseConfig = {
           apiKey: "AIzaSyDT6UPrNLx-Gc6X5jmXfvEx9nljyoU6gcY",
@@ -145,56 +174,8 @@
               
               if (userDoc.exists) {
                 const data = userDoc.data();
-                
-                // 旧データ（studyHistory）が存在し、新データがない場合は移行
-                if (data.studyHistory && data.studyHistory.length > 0 && !data.dailyRecords) {
-                  console.log('旧データから移行します...');
-                  const newDailyRecords = {};
-                  
-                  data.studyHistory.forEach(session => {
-                    const date = session.date; // "YYYY/MM/DD"形式
-                    const dateKey = date.replace(/\//g, '-'); // "YYYY-MM-DD"に変換
-                    
-                    if (!newDailyRecords[dateKey]) {
-                      newDailyRecords[dateKey] = 0;
-                    }
-                    newDailyRecords[dateKey] += session.duration;
-                  });
-                  
-                  // 移行したデータを保存
-                  await db.collection('users').doc(userId).set({
-                    dailyRecords: newDailyRecords,
-                    studyHistory: data.studyHistory, // バックアップとして残す
-                    migrated: true,
-                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                  });
-                  
-                  setDailyRecords(newDailyRecords);
-                  alert('旧データから移行しました！');
-                  return;
-                }
-                
-                // 既にmigrated35hフラグがある場合は何もしない
-                if (data.migrated35h) {
-                  setDailyRecords(data.dailyRecords || {});
-                } else {
-                  // 初回のみ35時間を今日に追加
-                  const records = data.dailyRecords || {};
-                  const today = formatDate(new Date());
-                  records[today] = (records[today] || 0) + (35 * 3600);
-                  
-                  // 保存してフラグを立てる
-                  await db.collection('users').doc(userId).set({
-                    dailyRecords: records,
-                    migrated35h: true,
-                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-                  }, { merge: true });
-                  
-                  setDailyRecords(records);
-                  console.log('35時間を追加しました');
-                }
+                setDailyRecords(data.dailyRecords || {});
               } else {
-                // 新規ユーザー - 何もしない
                 setDailyRecords({});
               }
             } catch (error) {
@@ -458,6 +439,41 @@
                     >
                       ゲストで始める
                     </button>
+                    
+                    <div className="pt-4 border-t border-gray-200">
+                      <p className="text-sm text-gray-600 mb-2">データがおかしくなった場合</p>
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm('⚠️ ログイン後、今日のデータを35時間にリセットします。よろしいですか？')) return;
+                          
+                          try {
+                            await signInWithGoogle();
+                            
+                            // ログイン完了を待つ
+                            setTimeout(async () => {
+                              const currentUser = firebase.auth().currentUser;
+                              if (!currentUser) return;
+                              
+                              const today = new Date().toISOString().split('T')[0];
+                              const targetSeconds = 35 * 3600; // 35時間
+                              
+                              await db.collection('users').doc(currentUser.uid).set({
+                                dailyRecords: { [today]: targetSeconds },
+                                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                              });
+                              
+                              alert('✅ データを35時間にリセットしました！');
+                              window.location.reload();
+                            }, 2000);
+                          } catch (error) {
+                            alert('エラーが発生しました');
+                          }
+                        }}
+                        className="w-full bg-red-100 hover:bg-red-200 text-red-700 py-2 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        🔧 35時間にリセット（緊急用）
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -474,13 +490,33 @@
                       <h1 className="text-3xl font-bold text-gray-800">学習タイマー</h1>
                       <p className="text-gray-600">継続は力なり 🔥</p>
                     </div>
-                    <button
-                      onClick={signOut}
-                      className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-                    >
-                      <LogOut className="w-5 h-5" />
-                      <span>ログアウト</span>
-                    </button>
+                    <div className="flex items-center space-x-4">
+                      <button
+                        onClick={() => {
+                          if (window.confirm('⚠️ 警告: 今日のデータを35時間にリセットします。よろしいですか？')) {
+                            const today = formatDate(new Date());
+                            const newRecords = { ...dailyRecords };
+                            newRecords[today] = 35 * 3600;
+                            setDailyRecords(newRecords);
+                            saveToFirestore(newRecords);
+                            alert('今日のデータを35時間にリセットしました');
+                          }
+                        }}
+                        className="text-sm bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-3 py-2 rounded-lg transition-colors"
+                      >
+                        🔧 35hにリセット
+                      </button>
+                      <button
+                        onClick={signOut}
+                        className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+                      >
+                        <LogOut className="w-5 h-5" />
+                        <span>ログアウト</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+                    💡 <strong>70hになってしまった場合:</strong> 「🔧 35hにリセット」ボタンで今日のデータを35時間に戻せます
                   </div>
                 </div>
 
@@ -743,6 +779,61 @@
                         ></div>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* 日別学習履歴 */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Calendar className="w-6 h-6 text-indigo-600" />
+                    <h2 className="text-xl font-bold text-gray-800">日別学習記録</h2>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {Object.keys(dailyRecords)
+                      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+                      .slice(0, 30)
+                      .map((date, index) => {
+                        const time = dailyRecords[date];
+                        const dateObj = new Date(date);
+                        const dayOfWeek = ['日', '月', '火', '水', '木', '金', '土'][dateObj.getDay()];
+                        const isToday = date === formatDate(new Date());
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        const isYesterday = date === formatDate(yesterday);
+                        
+                        return (
+                          <div
+                            key={date}
+                            className={`flex justify-between items-center p-3 rounded-lg ${
+                              isToday ? 'bg-blue-50 border-2 border-blue-300' : 
+                              isYesterday ? 'bg-orange-50 border-2 border-orange-200' :
+                              'bg-gray-50'
+                            }`}
+                          >
+                            <div>
+                              <div className="font-medium text-gray-800">
+                                {isToday && '🔵 '}
+                                {isYesterday && '🟠 '}
+                                {date} ({dayOfWeek})
+                              </div>
+                              {isToday && <div className="text-xs text-blue-600">今日</div>}
+                              {isYesterday && <div className="text-xs text-orange-600">昨日</div>}
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-indigo-600">
+                                {formatTime(time)}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    
+                    {Object.keys(dailyRecords).length === 0 && (
+                      <p className="text-gray-500 text-center py-8">
+                        まだ学習記録がありません
+                      </p>
+                    )}
                   </div>
                 </div>
 
