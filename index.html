@@ -108,7 +108,24 @@
               const userDoc = await db.collection('users').doc(userId).get();
               if (userDoc.exists) {
                 const data = userDoc.data();
-                setDailyRecords(data.dailyRecords || {});
+                const records = data.dailyRecords || {};
+                
+                // 初回のみ35時間を今日に追加（移行処理）
+                if (!data.migrated35h) {
+                  const today = formatDate(new Date());
+                  records[today] = (records[today] || 0) + (35 * 3600); // 35時間 = 126,000秒
+                  
+                  // 移行完了フラグを立てて保存
+                  await db.collection('users').doc(userId).set({
+                    dailyRecords: records,
+                    migrated35h: true,
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                  });
+                  
+                  console.log('35時間を追加しました');
+                }
+                
+                setDailyRecords(records);
               }
             } catch (error) {
               console.error('データ読み込みエラー:', error);
